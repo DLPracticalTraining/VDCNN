@@ -5,7 +5,6 @@ import tarfile
 import sys
 from six.moves import urllib
 
-DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 300
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 300
 LABEL_BYTES = 1
@@ -14,26 +13,6 @@ WIDTH = 224
 CHANNEL = 3
 
 def read_img(filename_queue):
-    """Reads and parses examples from CIFAR10 data files.
-
-    Recommendation: if you want N-way read parallelism, call this function
-    N times.  This will give you N independent Readers reading different
-    files & positions within those files, which will give better mixing of
-    examples.
-
-    Args:
-        filename_queue: A queue of strings with the filenames to read from.
-
-    Returns:
-        An object representing a single example, with the following fields:
-        height: number of rows in the result (32)
-        width: number of columns in the result (32)
-        depth: number of color channels in the result (3)
-        key: a scalar string Tensor describing the filename & record number
-            for this example.
-        label: an int32 Tensor with the label in the range 0..9.
-        uint8image: a [height, width, depth] uint8 Tensor with the image data
-    """
 
     class ImgRecord(object):
         pass
@@ -50,9 +29,7 @@ def read_img(filename_queue):
     # fixed number of bytes for each.
     record_bytes = label_bytes + image_bytes
 
-    # Read a record, getting filenames from the filename_queue.  No
-    # header or footer in the CIFAR-10 format, so we leave header_bytes
-    # and footer_bytes at their default of 0.
+    # Read a record, getting filenames from the filename_queue.
     reader = tf.FixedLengthRecordReader(record_bytes=record_bytes)
     result.key, value = reader.read(filename_queue)
 
@@ -68,9 +45,6 @@ def read_img(filename_queue):
             tf.strided_slice(record_bytes, [label_bytes], \
                     [label_bytes + image_bytes]), \
             [result.width, result.height, result.depth])
-  
-    # # Convert from [depth, height, width] to [height, width, depth].
-    # result.uint8image = tf.transpose(depth_major, [1, 2, 0])
   
     return result
 
