@@ -11,7 +11,7 @@ import vgg16
 from VOC2012 import *
 
 class Config():
-	batch_size = 64
+	batch_size = 1
 	test_size = 5000
 	img_height = 224
 	img_width = 224
@@ -22,7 +22,6 @@ class Config():
 	stddev = 5e-2
 	moving_average_decay = 0.999
 	initialize = True
-	gpu = '/gpu:0'
 
 	# checkpoint path and filename
 	logdir = "./log/train_log/"
@@ -77,7 +76,6 @@ def training(learn_rate = 0.01, num_epochs = 1000, save_model = False, debug = F
 		saver = tf.train.Saver(max_to_keep = 100)
 
 		sess_config = tf.ConfigProto()
-		sess_config.gpu_options.allow_growth = True
 		with tf.Session(config=sess_config) as sess:
 			# initialize parameters or restore from previous model
 			if not os.path.exists(config.params_dir):
@@ -97,41 +95,40 @@ def training(learn_rate = 0.01, num_epochs = 1000, save_model = False, debug = F
 
 			epoch_loss = 0.0
 
+			print 'Training...'
 			for epoch in range(num_epochs):
 				for step in range(num_steps):
-					with tf.device("/cpu:0"):
-						imgs, labels = voc2012.train.next_batch(config.batch_size)
+					imgs, labels = voc2012.train.next_batch(config.batch_size)
 					labels = one_hot(labels, 20)
 
 					feed_dict = {
 						model.imgs: imgs,
 						model.labels: labels
 						}
-					with tf.device(config.gpu):
-						_, l, predictions = sess.run([optimizer, loss, predicts_result], feed_dict = feed_dict)
+
+					_, l, predictions = sess.run([optimizer, loss, predicts_result], feed_dict = feed_dict)
 					print "batch loss: " , l
 
 					epoch_loss += l
 				
-				print "each epoch Loss: %0.6f" % (epoch_loss / num_steps)
+				print "Epoch %d: Loss =  %0.6f" % (epoch, (epoch_loss / num_steps))
 
-				with tf.device("/cpu:0"):
-					# write summary
-					if epoch % config.summary_iters == 0:
-						tmp_global_step = model.global_step.eval()
-						summary = sess.run(merged, feed_dict=feed_dict)
-						writer.add_summary(summary, tmp_global_step)
-					# save checkpoint
-					if epoch % config.checkpoint_iters == 0:
-						tmp_global_step = model.global_step.eval()
-						model.save(sess, saver, config.save_filename, tmp_global_step)
+				# write summary
+				if epoch % config.summary_iters == 0:
+					tmp_global_step = model.global_step.eval()
+					summary = sess.run(merged, feed_dict=feed_dict)
+					writer.add_summary(summary, tmp_global_step)
+				# save checkpoint
+				if epoch % config.checkpoint_iters == 0:
+					tmp_global_step = model.global_step.eval()
+					model.save(sess, saver, config.save_filename, tmp_global_step)
 
+			print 'Testing...'
 			test_loss = 0.0
 			test_accuracy = 0.0
 			for i in range(4):
 				
-				with tf.device("/cpu:0"):
-					valid_x, valid_y = voc2012.test.next_batch(config.test_size)
+				valid_x, valid_y = voc2012.test.next_batch(config.test_size)
 				valid_y = one_hot(test_labels, 20)
 				
 				if valid_x is not None and valid_y is not None:
