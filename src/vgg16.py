@@ -181,7 +181,7 @@ class VGG16:
 
     def save(self, sess, saver, filename, global_step):
         path = saver.save(sess, self.params_dir+filename, global_step=global_step)
-        print "Save params at " + path
+        # print "Save params at " + path
 
     def restore(self, sess, saver, filename):
         print "Restore from previous model: ", self.params_dir+filename
