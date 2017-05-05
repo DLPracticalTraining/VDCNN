@@ -20,7 +20,7 @@ const int WIDTH = 224;
 const int CHANNLE = 3;
 unsigned char pixels_labels[HEIGHT * WIDTH * CHANNLE + 1];
 
-string int2str(const int& integer) {  
+string int2str(const int& integer) {
     stringstream stream;  
     stream << integer;  
     return stream.str();

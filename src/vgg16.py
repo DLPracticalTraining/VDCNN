@@ -177,12 +177,11 @@ class VGG16:
         tf.summary.scalar(name + '/mean', tf.reduce_mean(x))
 
     def loss_summary(self, loss):
-        tf.summary.scalar(loss.op.name, loss)
+        tf.summary.scalar('loss', loss)
 
     def save(self, sess, saver, filename, global_step):
-        path = saver.save(sess, self.params_dir+filename, global_step=global_step)
+        path = saver.save(sess, self.params_dir + '/' + filename, global_step=global_step)
         # print "Save params at " + path
 
     def restore(self, sess, saver, filename):
-        print "Restore from previous model: ", self.params_dir+filename
-        saver.restore(sess, self.params_dir+filename)
+        saver.restore(sess, filename)

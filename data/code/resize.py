@@ -18,12 +18,13 @@ class_name = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', \
 
 class_num = 20
 train_test = ['_train.txt', '_val.txt']
+train_test_num = [0, 0]
 
 for i in range(class_num):
-    for postfix in train_test:
+    for tt in range(2):
         count = 0
-        file_path_r = src_log_file_path + class_name[i] + postfix
-        file_path_w = tar_log_file_path + str(i) + postfix
+        file_path_r = src_log_file_path + class_name[i] + train_test[tt]
+        file_path_w = tar_log_file_path + str(i) + train_test[tt]
         fpr = open(file_path_r, 'r')
         fpw = open(file_path_w, 'w')
 
@@ -31,6 +32,8 @@ for i in range(class_num):
         for oneLine in fpr:
             datas = oneLine.split(' ')
             if datas[-1][0] == '1':
+                train_test_num[tt] += 1
+                
                 if flag == False:
                     flag = True
                 else:
@@ -49,5 +52,8 @@ for i in range(class_num):
         fpr.close()
         fpw.close()
 
-        print class_name[i] + postfix + ' completed. Total number: %d' %count
+        print class_name[i] + train_test[tt] + ' completed. Total number: %d' %count
+
+print 'Total train number: %d'%train_test_num[0]
+print 'Total test number: %d'%train_test_num[1]
 

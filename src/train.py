@@ -24,9 +24,8 @@ class Config():
 	initialize = True
 
 	# checkpoint path and filename
-	logdir = "./log/train_log/"
-	params_dir = "./params/"
-	load_filename = "vgg16" + '-' + "-1"
+	logdir = "../log/train_log"
+	params_dir = "../params"
 	save_filename = "vgg16"
 
 	checkpoint_iters = 100
@@ -38,7 +37,7 @@ def one_hot(batch_y, num_classes):
 	y_[np.arange(batch_y.shape[0]), batch_y] = 1
 	return y_
 
-def training(learn_rate = 0.01, num_epochs = 1, save_model = False, debug = False):
+def training(learn_rate = 0.01, num_epochs =20, save_model = False, debug = False):
 	# assert len(train_x.shape) == 4
 	# [num_images, img_height, img_width, num_channel] = train_x.shape
 	# num_classes = labels.shape[-1]
@@ -82,12 +81,17 @@ def training(learn_rate = 0.01, num_epochs = 1, save_model = False, debug = Fals
 			# initialize parameters or restore from previous model
 			if not os.path.exists(config.params_dir):
 				os.makedirs(config.params_dir)
-			if os.listdir(config.params_dir) == [] or config.initialize:
 				print "Initializing Network..."
 				sess.run(init_op)
 			else:
-				print "Model Restoring..."
-				model.restore(sess, saver, config.load_filename)
+				ckpt = tf.train.get_checkpoint_state(config.params_dir)
+				if ckpt and ckpt.model_checkpoint_path:
+					print "Model Restoring..."
+					model.restore(sess, saver, ckpt.model_checkpoint_path)
+				else:
+					print "Initializing Network..."
+					sess.run(init_op)
+
 
 			merged = tf.summary.merge_all()
 			logdir = os.path.join(config.logdir,
@@ -106,16 +110,14 @@ def training(learn_rate = 0.01, num_epochs = 1, save_model = False, debug = Fals
 					model.labels: labels
 					}
 
-				_, l, predictions = sess.run([optimizer, loss, predicts_result], feed_dict = feed_dict)	
+				_, l, predictions, summary = sess.run([optimizer, loss, predicts_result, merged], feed_dict = feed_dict)	
 				print "Epoch %d: Loss = %0.6f" % (epoch, l)
 
 				# write summary
-				if epoch % config.summary_iters == 0:
-					tmp_global_step = model.global_step.eval()
-					summary = sess.run(merged, feed_dict=feed_dict)
-					writer.add_summary(summary, tmp_global_step)
+				# tmp_global_step = model.global_step.eval()
+				writer.add_summary(summary, epoch)
 				# save checkpoint
-				if epoch % config.checkpoint_iters == 0:
+				if epoch % 10 == 0:
 					tmp_global_step = model.global_step.eval()
 					model.save(sess, saver, config.save_filename, tmp_global_step)
 
@@ -134,8 +136,9 @@ def training(learn_rate = 0.01, num_epochs = 1, save_model = False, debug = Fals
 
 				l, predictions = sess.run([loss, predicts_result], feed_dict = feed_dict)
 				test_loss += l
-				test_accuracy += predictions
-			print 'Valid Loss = %.6f\t Accuracy = %.6f%%' % (test_loss, accuracy(predictions, valid_y) / batches)
+				print 'Batch Accuracy = %.6f%%' % accuracy(predictions, valid_y)
+				test_accuracy += accuracy(predictions, valid_y)
+			print 'Total Accuracy = %.6f%%' % test_accuracy / batches
 
 # predictions/labels is a 2-D matrix [num_images, num_classes]
 def accuracy(predictions, labels):
