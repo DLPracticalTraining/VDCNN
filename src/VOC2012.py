@@ -98,14 +98,12 @@ class VOC2012(object):
     def __init__(self, data_path, batch_size, test_batch_size):
         data_dir = os.path.join(data_path, 'processed_data')
         
-        filenames_train = [os.path.join(data_dir, '%d_train.bin' % i) \
-                for i in xrange(20)]
+        filenames_train = [os.path.join(data_dir, 'train.bin')]
         min_fraction_of_examples_in_queue = 0.4
         min_queue_examples_train = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN *
                 min_fraction_of_examples_in_queue)
         self.train = Data(filenames_train, min_queue_examples_train, batch_size, True)
 
-        filenames_test = [os.path.join(data_dir, '%d_val.bin' % i) \
-                for i in xrange(20)]
+        filenames_test = [os.path.join(data_dir, 'val.bin')]
         min_queue_examples_test = NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
         self.test = Data(filenames_test, min_queue_examples_test, test_batch_size, False)

@@ -17,42 +17,46 @@ class_name = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', \
               'sheep', 'sofa', 'train', 'tvmonitor']
 
 class_num = 20
-train_test = ['_train.txt', '_val.txt']
+train_test = ['train.txt', 'val.txt']
 train_test_num = [0, 0]
 
+train_text = ''
+test_text = ''
 for i in range(class_num):
     for tt in range(2):
         count = 0
-        file_path_r = src_log_file_path + class_name[i] + train_test[tt]
-        file_path_w = tar_log_file_path + str(i) + train_test[tt]
+        file_path_r = src_log_file_path + class_name[i] + '_' + train_test[tt]
+        
         fpr = open(file_path_r, 'r')
-        fpw = open(file_path_w, 'w')
-
-        flag = False
         for oneLine in fpr:
             datas = oneLine.split(' ')
             if datas[-1][0] == '1':
                 train_test_num[tt] += 1
-                
-                if flag == False:
-                    flag = True
-                else:
-                    fpw.write('\n')
-                
                 count = count + 1
                 file_name = datas[0]
+                if tt == 0:
+                    train_text = train_text + file_name + ' ' + str(i) + '\n'
+                else:
+                    test_text = test_text + file_name + ' ' + str(i) + '\n'
                 image_path = src_path + file_name + '.jpg'
                 image = Image.open(image_path)
                 image_resized = image.resize((IMG_WIDTH, IMG_HEIGHT))
                 image_resized.save(tar_path + file_name + '.jpg')
 
-                fpw.write(file_name)
-                
-
         fpr.close()
-        fpw.close()
 
         print class_name[i] + train_test[tt] + ' completed. Total number: %d' %count
+
+file_path_train = tar_log_file_path + train_test[0]
+file_path_test = tar_log_file_path + train_test[1]
+fp_train = open(file_path_train, 'w')
+fp_test = open(file_path_test, 'w')
+
+fp_train.write(str(train_test_num[0]) + '\n' + train_text)
+fp_test.write(str(train_test_num[1]) + '\n' + test_text)
+
+fp_train.close()
+fp_test.close()
 
 print 'Total train number: %d'%train_test_num[0]
 print 'Total test number: %d'%train_test_num[1]
