@@ -141,10 +141,13 @@ class VGG16:
 
     def conv_layer(self, name, input_, output_channel, kernel_size, trainable):
         with tf.name_scope(name) as scope:
-            kernel = tf.get_variable(scope + "Weights",
-                shape = [kernel_size, kernel_size, input_.get_shape()[-1].value, output_channel],
-                dtype = tf.float32,
-                initializer = tf.contrib.layers.xavier_initializer_conv2d())
+            # kernel = tf.get_variable(scope + "Weights",
+            #     shape = [kernel_size, kernel_size, input_.get_shape()[-1].value, output_channel],
+            #     dtype = tf.float32,
+            #     initializer = tf.contrib.layers.xavier_initializer_conv2d())
+            kernel = tf.Variable(tf.truncated_normal(shape = [kernel_size, kernel_size, input_.get_shape()[-1].value, output_channel],
+                                                    dtype = tf.float32,
+                                                    stddev = self.stddev), name = "Weights")
             conv = tf.nn.conv2d(input_, kernel, [1, 1, 1, 1], padding='SAME')
             bias = tf.Variable(tf.constant(0.0, shape=[output_channel], dtype=tf.float32), trainable, name='bias')
             output = tf.nn.relu(tf.nn.bias_add(conv, bias), name=scope)
@@ -158,15 +161,27 @@ class VGG16:
         else:
             size = shape[-1].value
         with tf.name_scope(name) as scope:
-            kernel = tf.get_variable(scope+'Weights',
-                shape=[size, output_num],
-                dtype=tf.float32,
-                initializer=tf.contrib.layers.xavier_initializer())
+            # kernel = tf.get_variable(scope+'Weights',
+            #     shape=[size, output_num],
+            #     dtype=tf.float32,
+            #     initializer=tf.contrib.layers.xavier_initializer())
+            kernel = tf.Variable(tf.truncated_normal(shape = [size, output_num],
+                                                    dtype = tf.float32,
+                                                    stddev = self.stddev), name = "Weights")
             bias = tf.Variable(tf.constant(0.1, shape=[output_num], dtype=tf.float32), trainable, name='bias')
             flat = tf.reshape(input_, [-1, size])
             output = tf.nn.relu(tf.nn.bias_add(tf.matmul(flat, kernel), bias))
             self._activation_summary(output)
         return output, kernel, bias
+
+    def load_weights(self, weight_file, sess):
+        weights = np.load(weight_file)
+        keys = sorted(weights.keys())
+        for i, k in enumerate(keys):
+            if (i == 30):
+                break
+            print i, k, np.shape(weights[k])
+            sess.run(self.parameters[i].assign(weights[k]))
 
     def _activation_summary(self, x):
         name = x.op.name

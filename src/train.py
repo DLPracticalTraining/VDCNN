@@ -11,7 +11,7 @@ import vgg16
 from VOC2012 import *
 
 class Config():
-	batch_size = 1
+	batch_size = 24
 	img_height = 224
 	img_width = 224
 	num_channel = 3
@@ -37,7 +37,7 @@ def one_hot(batch_y, num_classes):
 	y_[np.arange(batch_y.shape[0]), batch_y] = 1
 	return y_
 
-def training(learn_rate = 0.01, num_epochs =20, save_model = False, debug = False):
+def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = False):
 	# assert len(train_x.shape) == 4
 	# [num_images, img_height, img_width, num_channel] = train_x.shape
 	# num_classes = labels.shape[-1]
@@ -92,6 +92,8 @@ def training(learn_rate = 0.01, num_epochs =20, save_model = False, debug = Fals
 					print "Initializing Network..."
 					sess.run(init_op)
 
+
+			model.load_weights('vgg16_weights.npz', sess)
 
 			merged = tf.summary.merge_all()
 			logdir = os.path.join(config.logdir,
