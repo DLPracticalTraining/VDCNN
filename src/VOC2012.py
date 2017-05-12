@@ -90,7 +90,7 @@ class Data(object):
 
     def next_batch(self, batch_size):
         images, lables = self.sess.run([self.images, self.lables])
-        images = images.astype(np.float64) / 256.0
+        images = images.astype(np.float32) - 128.0
         return images, lables
 
 

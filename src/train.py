@@ -11,7 +11,8 @@ import vgg16
 from VOC2012 import *
 
 class Config():
-	batch_size = 24
+	batch_size = 32
+	test_size = 32
 	img_height = 224
 	img_width = 224
 	num_channel = 3
@@ -37,7 +38,11 @@ def one_hot(batch_y, num_classes):
 	y_[np.arange(batch_y.shape[0]), batch_y] = 1
 	return y_
 
-def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = False):
+# predictions/labels is a 2-D matrix [num_images, num_classes]
+def accuracy(predictions, labels):
+	return 100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0]
+
+def run_model(learn_rate=0.001, num_epochs=100, save_model=False, debug=False):
 	# assert len(train_x.shape) == 4
 	# [num_images, img_height, img_width, num_channel] = train_x.shape
 	# num_classes = labels.shape[-1]
@@ -49,12 +54,12 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 
 		model = vgg16.VGG16(config)
 
-		voc2012 = VOC2012('../data', config.batch_size, config.batch_size)
+		voc2012 = VOC2012('../data', config.batch_size, config.test_size)
 
 		predicts = model.building(True)
 
 		# loss function
-		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels = model.labels, logits = predicts)
+		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=model.labels, logits=predicts)
 		loss = tf.reduce_mean(cross_entropy)
 		model.loss_summary(loss)
 
@@ -63,7 +68,7 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 		# learning_rate = tf.train.exponential_decay(learn_rate, global_step, num_steps*num_epochs, 0.1, staircase=True)
 		# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
-		trainer = tf.train.RMSPropOptimizer(1e-3)
+		trainer = tf.train.RMSPropOptimizer(learn_rate)
 		gradients = trainer.compute_gradients(loss)
 		clipped_gradients = [(tf.clip_by_value(_[0], -1.0, 1.0), _[1]) for _ in gradients]
 		optimizer = trainer.apply_gradients(clipped_gradients)
@@ -93,7 +98,7 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 					sess.run(init_op)
 
 
-			model.load_weights('vgg16_weights.npz', sess)
+			# model.load_weights('vgg16_weights.npz', sess)
 
 			merged = tf.summary.merge_all()
 			logdir = os.path.join(config.logdir,
@@ -105,7 +110,7 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 			print 'Training...'
 			for epoch in range(num_epochs):
 				imgs, labels = voc2012.train.next_batch(config.batch_size)
-				labels = one_hot(labels, 20)
+				labels = one_hot(labels, config.num_classes)
 
 				feed_dict = {
 					model.imgs: imgs,
@@ -127,9 +132,10 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 			test_loss = 0.0
 			test_accuracy = 0.0
 			batches = config.num_images_test / config.batch_size + 1
+			# print 'Total train batches: %d' % batches
 			for i in range(batches):			
-				valid_x, valid_y = voc2012.test.next_batch(config.batch_size)
-				valid_y = one_hot(valid_y, 20)
+				valid_x, valid_y = voc2012.test.next_batch(config.test_size)
+				valid_y = one_hot(valid_y, config.num_classes)
 				
 				feed_dict = {
 					model.imgs: valid_x,
@@ -138,25 +144,11 @@ def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = Fal
 
 				l, predictions = sess.run([loss, predicts_result], feed_dict = feed_dict)
 				test_loss += l
-				print 'Batch Accuracy = %.6f%%' % accuracy(predictions, valid_y)
+				if (i + 1) % 30 == 0:
+					print 'Batch Accuracy = %.6f%%' % (test_accuracy / (i + 1))
 				test_accuracy += accuracy(predictions, valid_y)
-			print 'Total Accuracy = %.6f%%' % test_accuracy / batches
+			print 'Total Accuracy = %.6f%%' % (test_accuracy / batches)
 
-# predictions/labels is a 2-D matrix [num_images, num_classes]
-def accuracy(predictions, labels):
-	return 100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0]
 
 if __name__ == "__main__":
-	# batch = 64
-	# voc2012 = VOC2012('../data', batch, batch)
-	
-	# # imgs shape  (128, 224, 224, 3)
-	# # labels shape (128, 20)
-	# imgs, labels = voc2012.train.next_batch(batch)
-	# labels = one_hot(labels, 20)
-	
-	# test_imgs, test_labels = voc2012.test.next_batch(batch)
-	# test_labels = one_hot(test_labels, 20)
-
-	# training(imgs, labels, test_imgs, test_labels)
-	training()
+	run_model()
