@@ -140,15 +140,15 @@ class VGG16:
         # pool5 shape: 7 x 7 x 512
 
         with tf.variable_scope("fc1"):
-            fc1, fc1W, fc1b = self.fc_layer('fc1', pool5, 4096, trainable)
+            fc1, fc1W, fc1b = self.fc_layer('fc1', pool5, 4096, trainable, True)
             self.parameters += [fc1W, fc1b]
         
         with tf.variable_scope("fc2"):
-            fc2, fc2W, fc2b = self.fc_layer('fc2', fc1, 4096, trainable)
+            fc2, fc2W, fc2b = self.fc_layer('fc2', fc1, 4096, trainable, True)
             self.parameters += [fc2W, fc2b]
         
         with tf.variable_scope("fc3"):
-            fc3, fc3W, fc3b = self.fc_layer('fc3', fc2, num_classes, trainable)
+            fc3, fc3W, fc3b = self.fc_layer('fc3', fc2, num_classes, trainable, False)
             self.parameters += [fc3W, fc3b]
 
         return fc3
@@ -176,7 +176,7 @@ class VGG16:
         # self._activation_summary(output)
         return output, kernel, bias       
 
-    def fc_layer(self, name, input_, output_num, trainable):
+    def fc_layer(self, name, input_, output_num, trainable, activate):
         shape = input_.get_shape()
         if len(shape) == 4:
             size = shape[1].value * shape[2].value * shape[3].value
@@ -197,7 +197,10 @@ class VGG16:
         tf.summary.histogram("bias", bias)
         flat = tf.reshape(input_, [-1, size])
         # with tf.variable_scope("output"):
-        output = tf.nn.bias_add(tf.matmul(flat, kernel), bias)
+        if activate == True:
+            output = tf.nn.relu(tf.nn.bias_add(tf.matmul(flat, kernel), bias))
+        else:
+            output = tf.nn.bias_add(tf.matmul(flat, kernel), bias)
         tf.summary.histogram("output", output)
         # self._activation_summary(output)
         return output, kernel, bias
