@@ -1,162 +1,107 @@
+import tensorflow as tf
+import numpy as np
 from datetime import datetime
+import cv2
 import os
+import re
 import random
+import math
 import sys
 import time
 
-import tensorflow as tf
-import numpy as np
-
-import vgg16
+#import vgg19_trainable as vgg19
+import vgg16_trainable as vgg16
 from VOC2012 import *
 
 class Config():
-	batch_size = 24
-	img_height = 224
-	img_width = 224
-	num_channel = 3
-	num_classes = 20
-	num_images_train = 8331
-	num_images_test = 8351
-	wd = 5e-4
-	stddev = 5e-2
-	moving_average_decay = 0.999
-	initialize = True
+  batch_size = 32
+  steps = "-1"
+  gpu = '/gpu:0'
 
-	# checkpoint path and filename
-	logdir = "../log/train_log"
-	params_dir = "../params"
-	save_filename = "vgg16"
+  # checkpoint path and filename
+  logdir = "../log/train_log/"
+  params_dir = "../params/"
+  # load_filename = "vgg16" + '-' + steps
+  save_filename = "vgg16"
 
-	checkpoint_iters = 100
-	summary_iters = 10
-	validate_iters = 20
+  # iterations config
+  max_iteration = 1000
+  summary_iters = 100
+
 
 def one_hot(batch_y, num_classes):
-	y_ = np.zeros((batch_y.shape[0], num_classes))
-	y_[np.arange(batch_y.shape[0]), batch_y] = 1
-	return y_
-
-def training(learn_rate = 0.01, num_epochs =500, save_model = False, debug = False):
-	# assert len(train_x.shape) == 4
-	# [num_images, img_height, img_width, num_channel] = train_x.shape
-	# num_classes = labels.shape[-1]
-
-	config = Config()
-	# config.num_classes = num_classes
-
-	with tf.Graph().as_default():
-
-		model = vgg16.VGG16(config)
-
-		voc2012 = VOC2012('../data', config.batch_size, config.batch_size)
-
-		predicts = model.building(True)
-
-		# loss function
-		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels = model.labels, logits = predicts)
-		loss = tf.reduce_mean(cross_entropy)
-		model.loss_summary(loss)
-
-		# # optimizer with decayed learning rate
-		# global_step = tf.Variable(0, trainable=False)
-		# learning_rate = tf.train.exponential_decay(learn_rate, global_step, num_steps*num_epochs, 0.1, staircase=True)
-		# optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
-
-		trainer = tf.train.RMSPropOptimizer(1e-3)
-		gradients = trainer.compute_gradients(loss)
-		clipped_gradients = [(tf.clip_by_value(_[0], -1.0, 1.0), _[1]) for _ in gradients]
-		optimizer = trainer.apply_gradients(clipped_gradients)
-
-		# prediction for the training data
-		predicts_result = tf.nn.softmax(predicts)
-
-		# Initializing operation
-		init_op = tf.global_variables_initializer()
-
-		saver = tf.train.Saver(max_to_keep=100)
-
-		sess_config = tf.ConfigProto()
-		with tf.Session(config=sess_config) as sess:
-			# initialize parameters or restore from previous model
-			if not os.path.exists(config.params_dir):
-				os.makedirs(config.params_dir)
-				print "Initializing Network..."
-				sess.run(init_op)
-			else:
-				ckpt = tf.train.get_checkpoint_state(config.params_dir)
-				if ckpt and ckpt.model_checkpoint_path:
-					print "Model Restoring..."
-					model.restore(sess, saver, ckpt.model_checkpoint_path)
-				else:
-					print "Initializing Network..."
-					sess.run(init_op)
+  y_ = np.zeros((batch_y.shape[0], num_classes))
+  y_[np.arange(batch_y.shape[0]), batch_y] = 1
+  return y_
 
 
-			model.load_weights('vgg16_weights.npz', sess)
-
-			merged = tf.summary.merge_all()
-			logdir = os.path.join(config.logdir,
-				datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-
-			writer = tf.summary.FileWriter(logdir, sess.graph)
-
-			
-			print 'Training...'
-			for epoch in range(num_epochs):
-				imgs, labels = voc2012.train.next_batch(config.batch_size)
-				labels = one_hot(labels, 20)
-
-				feed_dict = {
-					model.imgs: imgs,
-					model.labels: labels
-					}
-
-				_, l, predictions, summary = sess.run([optimizer, loss, predicts_result, merged], feed_dict = feed_dict)	
-				print "Epoch %d: Loss = %0.6f" % (epoch, l)
-
-				# write summary
-				# tmp_global_step = model.global_step.eval()
-				writer.add_summary(summary, epoch)
-				# save checkpoint
-				if epoch % 10 == 0:
-					tmp_global_step = model.global_step.eval()
-					model.save(sess, saver, config.save_filename, tmp_global_step)
-
-			print 'Testing...'
-			test_loss = 0.0
-			test_accuracy = 0.0
-			batches = config.num_images_test / config.batch_size + 1
-			for i in range(batches):			
-				valid_x, valid_y = voc2012.test.next_batch(config.batch_size)
-				valid_y = one_hot(valid_y, 20)
-				
-				feed_dict = {
-					model.imgs: valid_x,
-					model.labels: valid_y
-					}
-
-				l, predictions = sess.run([loss, predicts_result], feed_dict = feed_dict)
-				test_loss += l
-				print 'Batch Accuracy = %.6f%%' % accuracy(predictions, valid_y)
-				test_accuracy += accuracy(predictions, valid_y)
-			print 'Total Accuracy = %.6f%%' % test_accuracy / batches
-
-# predictions/labels is a 2-D matrix [num_images, num_classes]
 def accuracy(predictions, labels):
-	return 100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0]
+  # correct_prediction = tf.equal(tf.argmax(predictions, 1), tf.argmax(labels, 1))
+  # return 100.0 * tf.reduce_mean(tf.cast(correct_prediction, "float"))
+  return 100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0]
+
+
+def run_model():
+    config = Config()
+    sess = tf.Session()
+
+    images = tf.placeholder(tf.float32, [config.batch_size, 224, 224, 3])
+    true_out = tf.placeholder(tf.float32, [config.batch_size, 20])
+    train_mode = tf.placeholder(tf.bool)
+
+    vgg = vgg16.Vgg16('../pre-vgg16.npy')
+    vgg.build(images, train_mode)
+    voc2012 = VOC2012('../data', config.batch_size, config.batch_size)
+
+    # loss function
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=true_out, logits=vgg.fc9)
+    loss = tf.reduce_mean(cross_entropy)
+    vgg.loss_summary(loss)
+
+    trainer = tf.train.RMSPropOptimizer(0.0001)
+    gradients = trainer.compute_gradients(loss)
+    clipped_gradients = [(tf.clip_by_value(_[0], -1.0, 1.0), _[1]) for _ in gradients]
+    optimizer = trainer.apply_gradients(clipped_gradients)
+
+    sess.run(tf.global_variables_initializer())
+
+    if not os.path.exists(config.params_dir):
+        os.makedirs(config.params_dir)
+
+    merged = tf.summary.merge_all()
+    logdir = os.path.join(config.logdir,
+      datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+
+    writer = tf.summary.FileWriter(logdir, sess.graph)
+
+    # test classification
+    # prob = sess.run(vgg.prob, feed_dict={images: batch1, train_mode: False})
+    # utils.print_prob(prob[0], './synset.txt')
+
+    print "start training"
+    for idx in xrange(config.max_iteration):
+      imgs, labels = voc2012.train.next_batch(config.batch_size)
+      labels = one_hot(labels, 20)
+      # feed data into the model
+      feed_dict = {
+          images : imgs,
+          true_out : labels,
+          train_mode : True
+      }
+
+      # with tf.device(config.gpu):
+        # run the training operation
+      # cost = tf.reduce_sum((vgg.prob - true_out) ** 2)
+      # train = tf.train.GradientDescentOptimizer(0.0001).minimize(cost)
+      _, batch_loss, summary = sess.run([optimizer, loss, merged], feed_dict=feed_dict)
+      print "Epoch %d: the batch_loss = %0.6f" % (idx, batch_loss)
+
+      writer.add_summary(summary, idx)
+
+      # if idx == 10:
+      #   vgg.save_npy(sess, "./params/vgg16-"+str(idx)+".npy")
+      if (idx+1)% config.summary_iters == 0:
+        vgg.save_npy(sess, "./params/vgg16-"+str(idx+1)+".npy")
 
 if __name__ == "__main__":
-	# batch = 64
-	# voc2012 = VOC2012('../data', batch, batch)
-	
-	# # imgs shape  (128, 224, 224, 3)
-	# # labels shape (128, 20)
-	# imgs, labels = voc2012.train.next_batch(batch)
-	# labels = one_hot(labels, 20)
-	
-	# test_imgs, test_labels = voc2012.test.next_batch(batch)
-	# test_labels = one_hot(test_labels, 20)
-
-	# training(imgs, labels, test_imgs, test_labels)
-	training()
+  run_model()
