@@ -4,8 +4,18 @@ This is a Tensorflow implementation of [VERY DEEP CONVOLUTIONAL NETWORKS(VGG, 20
 
 ## Data Processing
 
-* download VOC2012 dataset and put it in `./data` directory
+* Download VOC2012 dataset, rename the dataset folder as `VOC2012` and put it in `./data` directory
+* Put the source code of CImg library (ie. [`CImg.h`](https://github.com/dtschump/CImg/blob/master/CImg.h)) in `./data/code` directory
 * `cd data/code`
 * `python resize.py`
 * `make`
 * `./main.out`
+
+## Training
+
+* `cd src`
+* `python train.py`
+
+## Accessing Training Data of Steps
+
+* `tensorboard --logdir=./log`
